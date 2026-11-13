@@ -4,7 +4,7 @@ import casadi as cs
 
 
 @dataclass
-class TrajOpt:
+class Ocp2Fatrop:
     nx: int
     nu: int
     T0: float = 0
@@ -183,7 +183,20 @@ class TrajOpt:
 
 
         self.nlp.minimize(obj)
-        self.nlp.subject_to(self.nlp.bounded(lb,constraint,ub))
+
+        if False:
+        
+           self.nlp.subject_to(self.nlp.bounded(lb,constraint,ub))
+
+        else:
+
+            id_eq=cs.np.where((lb-ub).full()==0)[0].tolist()
+            for i in range(lb.numel()):
+                if i in id_eq:
+                    self.nlp.subject_to(constraint[i]==0)
+                else:
+                    self.nlp.subject_to(self.nlp.bounded(lb[i],constraint[i],ub[i]))
+
 
         dis_ocp = {
             "X": X,
@@ -275,7 +288,7 @@ def test():
     dis_ocp = trajopt.transcribe(N)
     Xg = cs.vertcat(cs.linspace(0, 1, N + 1).T, cs.DM.zeros(1, N + 1),cs.linspace(0,5,N+1).T)
     Ug = cs.vertcat(cs.DM.zeros(1, N),cs.DM.ones(1, N))
-    #sol=trajopt.solve(Xg, Ug)
+    sol=trajopt.solve(Xg, Ug)
     import matplotlib.pyplot as plt
     #X=sol.value(trajopt._dis_ocp['X'][0:2,:])
     #t=sol.value(trajopt._dis_ocp['X'][-1,:])#cs.np.linspace(0,1,N+1)
