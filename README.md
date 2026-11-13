@@ -16,6 +16,7 @@ $$\min_{x(t), u(t), t_0, t_f} \int_{t_0}^{t_f} L(t, x(t), u(t)) \, dt + E(t_0, t
 
 $$\dot{x}(t) = f(t, x(t), u(t)) \quad \forall t \in [t_0, t_f]$$
 
+where $t_0$ and $t_f$ are fixed and **not free**.
 
 2. **Path Constraints:**
 
@@ -30,6 +31,8 @@ $$e_{0,\text{lb}} \le e_0(t_0, x(t_0)) \le e_{0,\text{ub}}$$
 4. **Final Boundary / Event Constraints:**
 
 $$e_{f,\text{lb}} \le e_f(t_f, x(t_f)) \le e_{f,\text{ub}}$$
+
+_Note that the event constraints are separated based on the boundary it lies in. This is a hard requirement for FATROP. Periodic constraints on the state cannot be imposed_
 
 ### Description of Variables and Functions
 
