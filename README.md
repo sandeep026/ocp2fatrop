@@ -61,6 +61,48 @@ The code maps these mathematical elements into CasADi symbolic variables and Pyt
 * **`_e0`, `_e0_lb`, `_e0_ub**`: Initial event/boundary condition function $e_0$ with its bounds.
 * **`_ef`, `_ef_lb`, `_ef_ub**`: Final event/boundary condition function $e_f$ with its bounds.
 
+## Multiple shooting
+
+## Discretization and Indexing Scheme
+
+The continuous-time optimal control problem is discretized into a finite-dimensional Nonlinear Program (NLP) using **$N$ intervals** and **$N+1$ grid points**, indexed by $k \in \{1, 2, \dots, N+1\}$.
+
+### 1. Grid and Variable Indexing
+
+* **Time Grid ($t_k$):** $N+1$ collocation/mesh points spanning from $T_0$ to $T_f$.
+* **State Vector ($x_k$):** Indexed from $1$ to $N+1$ ($k = 1, \dots, N+1$).
+* **Control Input Vector ($u_k$):** Indexed from $1$ to $N$ ($k = 1, \dots, N$), corresponding to the intervals between grid points.
+
+---
+
+### 2. Constraints and Dynamics Formulation
+
+#### System Dynamics (Shooting Constraints)
+
+For each interval $k \in \{1, \dots, N\}$, the transition from state $x_k$ to $x_{k+1}$ is enforced via a shooting/integration map $\phi$ (such as the trapezoidal collocation `trap` or Runge-Kutta `rk4` scheme):
+
+
+$$x_{k+1} = \phi(t_k, x_k, u_k), \quad k = 1, \dots, N$$
+
+#### Path Constraints
+
+Evaluated across the first $N$ grid points ($k = 1, \dots, N$):
+
+
+$$h_{\text{lb}} \le h(t_k, x_k, u_k) \le h_{\text{ub}}, \quad k = 1, \dots, N$$
+
+#### Boundary / Event Constraints
+
+* **Initial Constraint ($e_0$):** Evaluated at the first grid point ($k = 1$):
+
+$$e_{0,\text{lb}} \le e_0(t_1, x_1) \le e_{0,\text{ub}}$$
+
+
+* **Final Constraint ($e_f$):** Evaluated at the final grid point ($k = N+1$):
+
+$$e_{f,\text{lb}} \le e_f(t_{N+1}, x_{N+1}) \le e_{f,\text{ub}}$$
+
+
 ### Decision vector
 
 $$
