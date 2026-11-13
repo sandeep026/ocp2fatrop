@@ -108,7 +108,19 @@ To solve the continuous-time optimal control problem numerically, it is transcri
 
 The decision variable vector stacks all state and control trajectories across the $N$ intervals and $N+1$ grid points:
 
-$$W=\begin{bmatrix} x_1\\ u_1\\ x_2\\ u_2\\ \vdots \\ x_{n}\\ u_{n}\\ x_{n+1} \end{bmatrix}$$
+$$
+W=
+\begin{bmatrix} 
+x_1\\ 
+u_1\\ 
+x_2\\ 
+u_2\\ 
+\vdots \\ 
+x_{n}\\ 
+u_{n}\\ 
+x_{n+1} 
+\end{bmatrix}
+$$
 
 Where:
 
@@ -121,7 +133,46 @@ Where:
 
 The constraints are interleaved into a structured vector $G$ along with their respective lower ($G_{lb}$) and upper ($G_{ub}$) bounds:
 
-$$G=\begin{bmatrix} r_1\\ h_1\\ e_1\\ r_2\\ h_2\\ \vdots \\ r_{n}\\ h_{n}\\ e_{n+1} \end{bmatrix}, \quad G_{lb}=\begin{bmatrix} r_{(lb,1)}\\ h_{(lb,1)}\\ e_{(lb,1)}\\ r_{(lb,2)}\\ h_{(lb,2)}\\ \vdots \\ r_{(lb,n)}\\ h_{(lb,n)}\\ e_{(lb,n+1)} \end{bmatrix}, \quad G_{ub}=\begin{bmatrix} r_{(ub,1)}\\ h_{(ub,1)}\\ e_{(ub,1)}\\ r_{(ub,2)}\\ h_{(ub,2)}\\ \vdots \\ r_{(ub,n)}\\ h_{(ub,n)}\\ e_{(ub,n+1)} \end{bmatrix}$$
+$$
+G=\begin{bmatrix} 
+r_1\\ 
+h_1\\ 
+e_1\\ 
+r_2\\ 
+h_2\\ 
+\vdots \\ 
+r_{n}\\ 
+h_{n}\\ 
+e_{n+1} 
+\end{bmatrix}, 
+\quad 
+G_{lb}=
+\begin{bmatrix} 
+r_{(lb,1)}\\ 
+h_{(lb,1)}\\ 
+e_{(lb,1)}\\ 
+r_{(lb,2)}\\ 
+h_{(lb,2)}\\ 
+\vdots \\ 
+r_{(lb,n)}\\ 
+h_{(lb,n)}\\
+e_{(lb,n+1)} 
+\end{bmatrix}, 
+\quad 
+G_{ub}=
+\begin{bmatrix} 
+r_{(ub,1)}\\
+h_{(ub,1)}\\
+e_{(ub,1)}\\
+r_{(ub,2)}\\ 
+h_{(ub,2)}\\
+\vdots \\ 
+r_{(ub,n)}\\ 
+h_{(ub,n)}\\ 
+e_{(ub,n+1)} 
+\end{bmatrix}
+$$
+
 
 Where:
 
