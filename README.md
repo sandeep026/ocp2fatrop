@@ -10,13 +10,13 @@ The `Ocp2Fatrop` class supports continuous-time **Bolza-form Optimal Control Pro
 
 $$\min_{x(t), u(t), t_0, t_f} \int_{t_0}^{t_f} L(t, x(t), u(t)) \, dt + E(t_0, t_f, x(t_0), x(t_f))$$
 
+where $t_0$ and $t_f$ are fixed and **not free**.
+
 **Subject to:**
 
 1. **System Dynamics:**
 
 $$\dot{x}(t) = f(t, x(t), u(t)) \quad \forall t \in [t_0, t_f]$$
-
-where $t_0$ and $t_f$ are fixed and **not free**.
 
 2. **Path Constraints:**
 
