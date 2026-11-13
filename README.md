@@ -63,8 +63,6 @@ The code maps these mathematical elements into CasADi symbolic variables and Pyt
 
 ## Multiple shooting
 
-## Discretization and Indexing Scheme
-
 The continuous-time optimal control problem is discretized into a finite-dimensional Nonlinear Program (NLP) using **$N$ intervals** and **$N+1$ grid points**, indexed by $k \in \{1, 2, \dots, N+1\}$.
 
 ### 1. Grid and Variable Indexing
@@ -102,62 +100,31 @@ $$e_{0,\text{lb}} \le e_0(t_1, x_1) \le e_{0,\text{ub}}$$
 
 $$e_{f,\text{lb}} \le e_f(t_{N+1}, x_{N+1}) \le e_{f,\text{ub}}$$
 
+## NLP
 
-### Decision vector
+To solve the continuous-time optimal control problem numerically, it is transcribed into a finite-dimensional Nonlinear Program (NLP) consisting of structured decision and constraint vectors.
 
-$$
-W=\begin{bmatrix}
-x_1\\
-u_1\\
-x_2\\
-u_2\\
-\vdots \\
-x_{n}\\
-u_{n}\\
-x_{n+1}
-\end{bmatrix}
-$$
+### Decision Vector ($W$)
 
-### Constraint vector
+The decision variable vector stacks all state and control trajectories across the $N$ intervals and $N+1$ grid points:
 
-$$
-G=\begin{bmatrix}
-r_1\\
-h_1\\
-e_1\\
-r_2\\
-h_2\\
-\vdots \\
-r_{n}\\
-h_{n}\\
-e_{n+1}
-\end{bmatrix}
-$$
+$$W=\begin{bmatrix} x_1\\ u_1\\ x_2\\ u_2\\ \vdots \\ x_{n}\\ u_{n}\\ x_{n+1} \end{bmatrix}$$
 
-$$
-G_{lb}=\begin{bmatrix}
-r_{(lb,1)}\\
-h_{(lb,1)}\\
-e_{(lb,1)}\\
-r_{(lb,2)}\\
-h_{(lb,2)}\\
-\vdots \\
-r_{(lb,n)}\\
-h_{(lb,n)}\\
-e_{(lb,n+1)}
-\end{bmatrix}
-$$
+Where:
 
-$$
-G_{ub}=\begin{bmatrix}
-r_{(ub,1)}\\
-h_{(ub,1)}\\
-e_{(ub,1)}\\
-r_{(ub,2)}\\
-h_{(ub,2)}\\
-\vdots \\
-r_{(ub,n)}\\
-h_{(ub,n)}\\
-e_{(ub,n+1)}
-\end{bmatrix}
-$$
+* $x_k$ for $k \in \{1, \dots, N+1\}$ represents the state vector at each grid point.
+* $u_k$ for $k \in \{1, \dots, N\}$ represents the control input vector applied over each interval.
+
+---
+
+### Constraint Vector ($G$) and Bounds ($G_{lb}, G_{ub}$)
+
+The constraints are interleaved into a structured vector $G$ along with their respective lower ($G_{lb}$) and upper ($G_{ub}$) bounds:
+
+$$G=\begin{bmatrix} r_1\\ h_1\\ e_1\\ r_2\\ h_2\\ \vdots \\ r_{n}\\ h_{n}\\ e_{n+1} \end{bmatrix}, \quad G_{lb}=\begin{bmatrix} r_{(lb,1)}\\ h_{(lb,1)}\\ e_{(lb,1)}\\ r_{(lb,2)}\\ h_{(lb,2)}\\ \vdots \\ r_{(lb,n)}\\ h_{(lb,n)}\\ e_{(lb,n+1)} \end{bmatrix}, \quad G_{ub}=\begin{bmatrix} r_{(ub,1)}\\ h_{(ub,1)}\\ e_{(ub,1)}\\ r_{(ub,2)}\\ h_{(ub,2)}\\ \vdots \\ r_{(ub,n)}\\ h_{(ub,n)}\\ e_{(ub,n+1)} \end{bmatrix}$$
+
+Where:
+
+* **$r_k$ (Dynamics / Shooting Residuals):** Enforces transition continuity from step $k$ to $k+1$ (e.g., $x_{k+1} - \phi(t_k, x_k, u_k) = 0$), where lower and upper bounds are typically set to zero ($r_{lb} = r_{ub} = 0$).
+* **$h_k$ (Path Constraints):** Enforces state-control constraints evaluated at each interval ($h_{\text{lb}} \le h_k \le h_{\text{ub}}$).
+* **$e_1$ and $e_{n+1}$ (Boundary / Event Constraints):** Enforces initial conditions at $k=1$ ($e_1 = e_0$) and final conditions at $k=N+1$ ($e_{n+1} = e_f$).
