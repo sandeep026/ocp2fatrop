@@ -2,7 +2,7 @@
 
 Fatrop is a structure exploiting discrete OCP solver for fast numerical optimal control. Inspired by IPOPT, it implements an primal dual IP algorithm and uses Ricatti recursion to solve the linear system at each Newton
 iteration efficiently. If the KKT solve time is currently a bottleneck in your setup, switching to FATROP can speed up things significantly. However, this solver requires a special ordering of variables and constraints
-to work. It also requires the transcription must be multiple shooting.
+to work. It also requires the transcription to be multiple shooting.
 
 ## Requirements
 
