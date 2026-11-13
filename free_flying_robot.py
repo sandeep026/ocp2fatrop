@@ -1,5 +1,7 @@
 import casadi as cs
+import matplotlib.pyplot as plt
 from ocp2fatrop import Ocp2Fatrop
+
 
 def robot():
     ocp = Ocp2Fatrop(nx=6, nu=4, T0=0, Tf=12)

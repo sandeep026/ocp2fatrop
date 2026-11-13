@@ -1,7 +1,7 @@
-
 from dataclasses import dataclass, field
 
 import casadi as cs
+
 
 @dataclass
 class Ocp2Fatrop:
@@ -51,9 +51,9 @@ class Ocp2Fatrop:
         options["expand"] = True
         options["fatrop"] = {"mu_init": 0.1}
         options["structure_detection"] = "auto"
-        options["debug"] = True
+        options["debug"] = False
         self.nlp.solver("fatrop", options)
-        #self.nlp.solver('ipopt')
+        # self.nlp.solver('ipopt')
 
     @classmethod
     def check_type(cls, names: list["str"], obj, req_type):
@@ -81,34 +81,42 @@ class Ocp2Fatrop:
         for name in ["L", "f", "h"]:
             if name in exps:
                 setattr(
-                    self, f'_{name}', cs.Function(name, self.get_path_var(), [exps[name]])
+                    self,
+                    f"_{name}",
+                    cs.Function(name, self.get_path_var(), [exps[name]]),
                 )
 
         for name in ["e0", "ef", "E"]:
             if name in exps:
                 if name == "e0":
                     setattr(
-                        self, f'_{name}', cs.Function(name, self.get_e0_var(), [exps[name]])
+                        self,
+                        f"_{name}",
+                        cs.Function(name, self.get_e0_var(), [exps[name]]),
                     )
                 elif name == "ef":
                     setattr(
-                        self, f'_{name}', cs.Function(name, self.get_ef_var(), [exps[name]])
+                        self,
+                        f"_{name}",
+                        cs.Function(name, self.get_ef_var(), [exps[name]]),
                     )
                 else:
                     setattr(
-                        self, f'_{name}', cs.Function(name, self.get_event_var(), [exps[name]])
+                        self,
+                        f"_{name}",
+                        cs.Function(name, self.get_event_var(), [exps[name]]),
                     )
 
         for name in ["e0_lb", "ef_lb", "e0_ub", "ef_ub", "h_lb", "h_ub"]:
             if name in exps:
-                setattr(self, f'_{name}', cs.DM(exps[name]))
+                setattr(self, f"_{name}", cs.DM(exps[name]))
 
-    def transcribe(self, N: int = 50, method:str='trap'):
+    def transcribe(self, N: int = 50, method: str = "trap"):
 
-        if not isinstance(self._e0,cs.Function):
+        if not isinstance(self._e0, cs.Function):
             raise ValueError("event constraint at t0, e0, e0_lb, e0_ub mandatory")
 
-        if not isinstance(self._f,cs.Function):
+        if not isinstance(self._f, cs.Function):
             raise ValueError("dynamics f is mandatory")
 
         W = self.nlp.variable(self.nx + self.nu, N)
@@ -127,13 +135,13 @@ class Ocp2Fatrop:
         Xf = X[:, -1]
 
         # objective
-        if isinstance(self._L,cs.Function):
-            Ll=self._L.map(N, "serial")(tl, Xl, U).T
-            Lr=self._L.map(N, "serial")(tr, Xr, U).T
-            lagrange = 0.5*(tr - tl) @(Ll+Lr) 
+        if isinstance(self._L, cs.Function):
+            Ll = self._L.map(N, "serial")(tl, Xl, U).T
+            Lr = self._L.map(N, "serial")(tr, Xr, U).T
+            lagrange = 0.5 * (tr - tl) @ (Ll + Lr)
         else:
             lagrange = 0
-        if isinstance(self._E,cs.Function):
+        if isinstance(self._E, cs.Function):
             mayer = self._E(t0, tf, X0, Xf)
         else:
             mayer = 0
@@ -145,7 +153,7 @@ class Ocp2Fatrop:
         e0_ub = self._e0_ub
 
         # ef
-        if isinstance(self._ef,cs.Function):
+        if isinstance(self._ef, cs.Function):
             ef = self._ef(tf, Xf)
             ef_lb = self._ef_lb
             ef_ub = self._ef_ub
@@ -154,27 +162,25 @@ class Ocp2Fatrop:
             ef_lb = cs.MX()
             ef_ub = cs.MX()
 
-
         # defect
-        if method=='trap':
-            D = Xr-self.trap().map(N,'serial')(tl,tr,Xl,U)
-        elif method=='rk':
+        if method == "trap":
+            D = Xr - self.trap().map(N, "serial")(tl, tr, Xl, U)
+        elif method == "rk":
             D = self.rk4().map(N, "serial")(tl, tr, Xl, Xr, U)
         else:
-            raise ValueError('Incorrect shooting method')
+            raise ValueError("Incorrect shooting method")
         D_lb = cs.DM.zeros(D.shape)
         D_ub = cs.DM.zeros(D.shape)
 
         # path
-        if isinstance(self._h,cs.Function):
+        if isinstance(self._h, cs.Function):
             H = self._h.map(N, "serial")(tl, Xl, U)
             H_lb = cs.repmat(self._h_lb, 1, N)
             H_ub = cs.repmat(self._h_ub, 1, N)
         else:
-            H=cs.MX()
-            H_lb=cs.DM()
-            H_ub=cs.DM()
-
+            H = cs.MX()
+            H_lb = cs.DM()
+            H_ub = cs.DM()
 
         A = cs.vcat([D, H])
         A_lb = cs.vcat([D_lb, H_lb])
@@ -191,22 +197,18 @@ class Ocp2Fatrop:
             cs.vertcat(cs.vec(A_ub[:, 1:-1]), A_ub[:, -1], ef_ub),
         )
 
-
         self.nlp.minimize(obj)
 
         if False:
-        
-           self.nlp.subject_to(self.nlp.bounded(lb,constraint,ub))
+            self.nlp.subject_to(self.nlp.bounded(lb, constraint, ub))
 
         else:
-
-            id_eq=cs.np.where((lb-ub).full()==0)[0].tolist()
+            id_eq = cs.np.where((lb - ub).full() == 0)[0].tolist()
             for i in range(lb.numel()):
                 if i in id_eq:
-                    self.nlp.subject_to(constraint[i]==0)
+                    self.nlp.subject_to(constraint[i] == 0)
                 else:
-                    self.nlp.subject_to(self.nlp.bounded(lb[i],constraint[i],ub[i]))
-
+                    self.nlp.subject_to(self.nlp.bounded(lb[i], constraint[i], ub[i]))
 
         dis_ocp = {
             "X": X,
@@ -222,12 +224,12 @@ class Ocp2Fatrop:
             "e0_lb": e0_lb,
             "e0_ub": e0_ub,
         }
-        if  isinstance(self._ef,cs.Function):
+        if isinstance(self._ef, cs.Function):
             dis_ocp["ef"] = ef
             dis_ocp["ef_lb"] = ef_lb
             dis_ocp["ef_ub"] = ef_ub
 
-        if  isinstance(self._h,cs.Function):
+        if isinstance(self._h, cs.Function):
             dis_ocp["h"] = H
             dis_ocp["h_lb"] = H_lb
             dis_ocp["h_ub"] = H_ub
@@ -259,32 +261,34 @@ class Ocp2Fatrop:
         defect = xr - xl - 0.5 * (tr - tl) * (kl + kr)
 
         p = cs.vertcat(xl, tl, tr, u)
-        residual_fun = cs.Function('residual', [xr, p], [defect], ['xr', 'p'], ['defect'])
-        xr_solver = cs.rootfinder('xr_solver', 'newton', residual_fun)
+        residual_fun = cs.Function(
+            "residual", [xr, p], [defect], ["xr", "p"], ["defect"]
+        )
+        xr_solver = cs.rootfinder("xr_solver", "newton", residual_fun)
 
-        x_guess = xl + (tr-tl) * kl
-    
+        x_guess = xl + (tr - tl) * kl
+
         sol = xr_solver(x_guess, p)
         xr = sol
-    
+
         interval_integrator = cs.Function(
-            'shooting_interval',
+            "shooting_interval",
             [tl, tr, xl, u],
             [xr],
         )
 
         return interval_integrator
-    
+
     def rk4(self):
         xl = cs.SX.sym("xl", self.nx, 1)
         xr = cs.SX.sym("xr", self.nx, 1)
         u = cs.SX.sym("u", self.nu, 1)
         tl = cs.SX.sym("tl", 1, 1)
         tr = cs.SX.sym("tr", 1, 1)
-        dt=tr-tl
-        k1 = self._f(tl,xl, u)
-        k2 = self._f(tl+dt/2,xl + dt / 2 * k1, u)
-        k3 = self._f(tl+dt/2,xl + dt / 2 * k2, u)
-        k4 = self._f(tr,xl + dt * k3, u)
-        defect = xr- xl - dt / 6 * (k1 + 2 * k2 + 2 * k3 + k4)
+        dt = tr - tl
+        k1 = self._f(tl, xl, u)
+        k2 = self._f(tl + dt / 2, xl + dt / 2 * k1, u)
+        k3 = self._f(tl + dt / 2, xl + dt / 2 * k2, u)
+        k4 = self._f(tr, xl + dt * k3, u)
+        defect = xr - xl - dt / 6 * (k1 + 2 * k2 + 2 * k3 + k4)
         return cs.Function("defect", [tl, tr, xl, xr, u], [defect])
