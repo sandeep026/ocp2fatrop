@@ -4,6 +4,17 @@ Fatrop is a structure exploiting discrete OCP solver for fast numerical optimal 
 iteration efficiently. If the KKT solve time is currently a bottleneck in your setup, switching to FATROP can speed up things significantly. However, this solver requires a special ordering of variables and constraints
 to work. It also requires the transcription must be multiple shooting.
 
+## Requirements
+
+* python
+* matplotlib
+* casadi 3.8.2
+* numpy
+
+## Dev notes
+
+This is a first working prototype and it will improve further with time.
+
 ## Problem
 
 The `Ocp2Fatrop` class supports continuous-time **Bolza-form Optimal Control Problems (OCPs)** defined by the following mathematical program:
