@@ -42,15 +42,15 @@ The code maps these mathematical elements into CasADi symbolic variables and Pyt
 
 * **`nx`**: Dimension of the state vector $x(t)$.
 * **`nu`**: Dimension of the control input vector $u(t)$.
-* **`T0`, `Tf**`: Nominal initial and final time bounds of the horizon.
+* **`T0`**, **`Tf`**: Nominal initial and final time bounds of the horizon.
 
 #### Symbolic Variables
 
 * **`t`**: Time symbol (`cs.SX`).
 * **`x`**: State vector symbol of size `nx` (`cs.SX`).
 * **`u`**: Control vector symbol of size `nu` (`cs.SX`).
-* **`t0`**, **`tf**`**: Initial and final time symbols.
-* **`x0`**, **`xf**`**: Initial and final state vector symbols.
+* **`t0`**, **`tf`**: Initial and final time symbols.
+* **`x0`**, **`xf`**: Initial and final state vector symbols.
 
 #### Objective & Dynamics Expressions (`set_expressions`)
 
@@ -60,9 +60,9 @@ The code maps these mathematical elements into CasADi symbolic variables and Pyt
 
 #### Constraints & Bounds (`set_expressions`)
 
-* **`_h`**, **`_h_lb`**, **`_h_ub**`**: Path constraint function $h$ along with its lower ($h_{\text{lb}}$) and upper ($h_{\text{ub}}$) numerical bounds.
-* **`_e0`**, **`_e0_lb`**, **`_e0_ub**`**: Initial event/boundary condition function $e_0$ with its bounds.
-* **`_ef`**, **`_ef_lb`,** `_ef_ub**`**: Final event/boundary condition function $e_f$ with its bounds.
+* **`_h`**, **`_h_lb`**, **`_h_ub`**: Path constraint function $h$ along with its lower ($h_{\text{lb}}$) and upper ($h_{\text{ub}}$) numerical bounds.
+* **`_e0`**, **`_e0_lb`**, **`_e0_ub`**: Initial event/boundary condition function $e_0$ with its bounds.
+* **`_ef`**, **`_ef_lb`,** `_ef_ub`**: Final event/boundary condition function $e_f$ with its bounds.
 
 ## Multiple shooting
 
