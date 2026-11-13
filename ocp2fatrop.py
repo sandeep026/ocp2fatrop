@@ -4,7 +4,7 @@ import casadi as cs
 
 
 @dataclass
-class Ocp2Fatrop:
+class TrajOpt:
     nx: int
     nu: int
     T0: float = 0
@@ -156,7 +156,8 @@ class Ocp2Fatrop:
 
 
         # defect
-        D = self.rk4().map(N, "serial")(tl, tr, Xl, Xr, U)
+        D = Xr-self.trap().map(N,'serial')(tl,tr,Xl,U)
+        #D = self.rk4().map(N, "serial")(tl, tr, Xl, Xr, U)
         D_lb = cs.DM.zeros(D.shape)
         D_ub = cs.DM.zeros(D.shape)
 
@@ -246,9 +247,25 @@ class Ocp2Fatrop:
         tr = cs.SX.sym("tr", 1, 1)
         kl = self._f(tl, xl, u)
         kr = self._f(tr, xr, u)
-        defect = xr - xl - 0.5 * (tr - tl) * (kl + kr)
-        return cs.Function("defect", [tl, tr, xl, xr, u], [defect])
+        defect = xr - xl - 1 * (tr - tl) * (kl + kr)
 
+        p = cs.vertcat(xl, tl, tr, u)
+        residual_fun = cs.Function('residual', [xr, p], [defect], ['xr', 'p'], ['defect'])
+        xr_solver = cs.rootfinder('xr_solver', 'newton', residual_fun)
+
+        x_guess = xl + (tr-tl) * kl
+    
+        sol = xr_solver(x_guess, p)
+        xr = sol
+    
+        interval_integrator = cs.Function(
+            'shooting_interval',
+            [tl, tr, xl, u],
+            [xr],
+        )
+
+        return interval_integrator
+    
     def rk4(self):
         xl = cs.SX.sym("xl", self.nx, 1)
         xr = cs.SX.sym("xr", self.nx, 1)
@@ -284,20 +301,20 @@ def test():
     exprs["h_lb"] = [-inf, 0,0, 0]
     exprs["h_ub"] = [0, 1,inf, inf]
     trajopt.set_expressions(exprs)
-    N=20
+    N=5
     dis_ocp = trajopt.transcribe(N)
     Xg = cs.vertcat(cs.linspace(0, 1, N + 1).T, cs.DM.zeros(1, N + 1),cs.linspace(0,5,N+1).T)
     Ug = cs.vertcat(cs.DM.zeros(1, N),cs.DM.ones(1, N))
     sol=trajopt.solve(Xg, Ug)
     import matplotlib.pyplot as plt
-    #X=sol.value(trajopt._dis_ocp['X'][0:2,:])
-    #t=sol.value(trajopt._dis_ocp['X'][-1,:])#cs.np.linspace(0,1,N+1)
-    #U=sol.value(trajopt._dis_ocp['U'][0,:])
-    #plt.plot(t,X[0,:],'-o', label='pos')
-    #plt.plot(t,X[1,:],'-o', label='vel')
-    #plt.plot(t[0:-1],U,'-o',label='throttle')
-    #plt.legend()
-    #plt.figure()
+    X=sol.value(trajopt._dis_ocp['X'][0:2,:])
+    t=sol.value(trajopt._dis_ocp['X'][-1,:])#cs.np.linspace(0,1,N+1)
+    U=sol.value(trajopt._dis_ocp['U'][0,:])
+    plt.plot(t,X[0,:],'-o', label='pos')
+    plt.plot(t,X[1,:],'-o', label='vel')
+    plt.plot(t[0:-1],U,'-o',label='throttle')
+    plt.legend()
+    plt.figure()
     plt.spy(cs.jacobian(trajopt.nlp.g,trajopt.nlp.x).sparsity())
     plt.show()
 test()
@@ -327,3 +344,8 @@ def check():
     plt.title("Debug view of fatrop interface structure detection")
     plt.legend()
     plt.show()
+
+check()
+# if __name__ == "__main__":
+#
+#    result = solve_low_thrust_fb(N=50)
