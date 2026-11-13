@@ -3,7 +3,6 @@ from dataclasses import dataclass, field
 
 import casadi as cs
 
-
 @dataclass
 class Ocp2Fatrop:
     nx: int
@@ -104,7 +103,7 @@ class Ocp2Fatrop:
             if name in exps:
                 setattr(self, f'_{name}', cs.DM(exps[name]))
 
-    def transcribe(self, N: int = 50):
+    def transcribe(self, N: int = 50, method:str='trap'):
 
         if not isinstance(self._e0,cs.Function):
             raise ValueError("event constraint at t0, e0, e0_lb, e0_ub mandatory")
@@ -131,7 +130,7 @@ class Ocp2Fatrop:
         if isinstance(self._L,cs.Function):
             Ll=self._L.map(N, "serial")(tl, Xl, U).T
             Lr=self._L.map(N, "serial")(tr, Xr, U).T
-            lagrange = 0.5*(tr - tl) / N@(Ll+Lr) 
+            lagrange = 0.5*(tr - tl) @(Ll+Lr) 
         else:
             lagrange = 0
         if isinstance(self._E,cs.Function):
@@ -157,8 +156,12 @@ class Ocp2Fatrop:
 
 
         # defect
-        D = Xr-self.trap().map(N,'serial')(tl,tr,Xl,U)
-        #D = self.rk4().map(N, "serial")(tl, tr, Xl, Xr, U)
+        if method=='trap':
+            D = Xr-self.trap().map(N,'serial')(tl,tr,Xl,U)
+        elif method=='rk':
+            D = self.rk4().map(N, "serial")(tl, tr, Xl, Xr, U)
+        else:
+            raise ValueError('Incorrect shooting method')
         D_lb = cs.DM.zeros(D.shape)
         D_ub = cs.DM.zeros(D.shape)
 
@@ -167,6 +170,11 @@ class Ocp2Fatrop:
             H = self._h.map(N, "serial")(tl, Xl, U)
             H_lb = cs.repmat(self._h_lb, 1, N)
             H_ub = cs.repmat(self._h_ub, 1, N)
+        else:
+            H=cs.MX()
+            H_lb=cs.DM()
+            H_ub=cs.DM()
+
 
         A = cs.vcat([D, H])
         A_lb = cs.vcat([D_lb, H_lb])
@@ -248,7 +256,7 @@ class Ocp2Fatrop:
         tr = cs.SX.sym("tr", 1, 1)
         kl = self._f(tl, xl, u)
         kr = self._f(tr, xr, u)
-        defect = xr - xl - 1 * (tr - tl) * (kl + kr)
+        defect = xr - xl - 0.5 * (tr - tl) * (kl + kr)
 
         p = cs.vertcat(xl, tl, tr, u)
         residual_fun = cs.Function('residual', [xr, p], [defect], ['xr', 'p'], ['defect'])
