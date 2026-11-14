@@ -39,7 +39,48 @@ class Ocp2Fatrop:
 
     _dis_ocp: dict = field(default_factory=dict)
 
+    ineqeq:list=field(default_factory=list)
+
+    @classmethod
+    def check_type(cls, names: list["str"], obj, req_type):
+        for name in names:
+            var = getattr(obj, name)
+            if not isinstance(var, req_type):
+                raise TypeError(
+                    f"{name} must be of type {req_type.__name__} but received type {type(var)}"
+                )
+
+    @classmethod
+    def ge(cls, names: list["str"], obj, rhs):
+        for name in names:
+            var = getattr(obj, name)
+            if var < rhs:
+                raise ValueError(f"{name} must be > {rhs} but received {var}<{rhs}")
+
+    @classmethod
+    def le(cls, names: list["str"], obj, rhs):
+        for name in names:
+            var = getattr(obj, name)
+            if var > rhs:
+                raise ValueError(f"{name} must be < {rhs} but received {var}>{rhs}")
+
+    @classmethod
+    def shape(cls, names: list["str"], obj, req_shapes: list[tuple]):
+        for name, shape in zip(names, req_shapes):
+            var = getattr(obj, name)
+            if var.shape != shape:
+                raise ValueError(
+                    f"{name} must be of shape {shape} but received {var.shape}"
+                )
+
     def __post_init__(self):
+
+        Ocp2Fatrop.check_type(["nx", "nu"], self, int)
+        Ocp2Fatrop.check_type(["T0", "Tf"], self, (float, int))
+        Ocp2Fatrop.ge(["nx", "nu", "Tf"], self, 1e-16)
+        Ocp2Fatrop.ge(["T0"], self, 0)
+        Ocp2Fatrop.le(["T0"], self, self.Tf)
+
         self.t = cs.SX.sym("t")
         self.x = cs.SX.sym("x", self.nx)
         self.u = cs.SX.sym("u", self.nu)
@@ -47,22 +88,21 @@ class Ocp2Fatrop:
         self.x0 = cs.SX.sym("x0", self.nx)
         self.tf = cs.SX.sym("tf")
         self.xf = cs.SX.sym("xf", self.nx)
-        options = {}
-        options["expand"] = True
-        options["fatrop"] = {"mu_init": 0.1}
-        options["structure_detection"] = "auto"
-        options["debug"] = False
-        self.nlp.solver("fatrop", options)
-        # self.nlp.solver('ipopt')
 
-    @classmethod
-    def check_type(cls, names: list["str"], obj, req_type):
-        for name in names:
-            var = getattr(obj, name)
-            if not isinstance(var, cs.SX):
-                raise TypeError(
-                    f"{name} must be of type SX but received type {type(var)}"
-                )
+        Ocp2Fatrop.check_type(["t", "x", "u", "t0", "tf", "x0", "xf"], self, cs.SX)
+        Ocp2Fatrop.shape(
+            ["t", "x", "u", "t0", "tf", "x0", "xf"],
+            self,
+            [
+                (1, 1),
+                (self.nx, 1),
+                (self.nu, 1),
+                (1, 1),
+                (1, 1),
+                (self.nx, 1),
+                (self.nx, 1),
+            ],
+        )
 
     def get_path_var(self):
         return [self.t, self.x, self.u]
@@ -78,46 +118,71 @@ class Ocp2Fatrop:
 
     def set_expressions(self, exps: dict):
 
+        absent=[]
         for name in ["L", "f", "h"]:
             if name in exps:
+                if not isinstance(exps[name],(int,float,cs.DM,cs.SX)):
+                    raise TypeError(f'{name} must be of type (int,float,cs.DM,cs.SX) but received {type(exps[name]).__name__}')
                 setattr(
                     self,
                     f"_{name}",
                     cs.Function(name, self.get_path_var(), [exps[name]]),
                 )
+            else:
+                absent.append(name)
 
         for name in ["e0", "ef", "E"]:
             if name in exps:
                 if name == "e0":
+                    if not isinstance(exps[name],cs.SX):
+                        raise TypeError(f'{name} must be of type cs.SX but received {type(exps[name]).__name__}')
                     setattr(
                         self,
                         f"_{name}",
                         cs.Function(name, self.get_e0_var(), [exps[name]]),
                     )
                 elif name == "ef":
+                    if not isinstance(exps[name],cs.SX):
+                        raise TypeError(f'{name} must be of type cs.SX but received {type(exps[name]).__name__}')
                     setattr(
                         self,
                         f"_{name}",
                         cs.Function(name, self.get_ef_var(), [exps[name]]),
                     )
-                else:
+                elif name=='E':
+                    if not isinstance(exps[name],(cs.SX,int,float,cs.DM)):
+                        raise TypeError(f'{name} must be of type cs.SX but received {type(exps[name]).__name__}')
                     setattr(
                         self,
                         f"_{name}",
                         cs.Function(name, self.get_event_var(), [exps[name]]),
                     )
+            else:
+                absent.append(name)
 
+        #stores constants (list)  as DM vectors
         for name in ["e0_lb", "ef_lb", "e0_ub", "ef_ub", "h_lb", "h_ub"]:
             if name in exps:
+                if not isinstance(exps[name],list):
+                    raise TypeError(f'{name} must be of type list[float|int] but received {type(exps[name]).__name__}')
                 setattr(self, f"_{name}", cs.DM(exps[name]))
+            else:
+                absent.append(name)
+
+        #catches if madatory expression not set by user
+        for name in absent:
+            if name in ['L','E','f','e0','e0_lb','e0_ub']:
+                raise ValueError(f'{name} is mandatory and user has not set')
+
 
     def transcribe(self, N: int = 50, method: str = "trap"):
 
-        if not isinstance(self._e0, cs.Function):
-            raise ValueError("event constraint at t0, e0, e0_lb, e0_ub mandatory")
-
-        if not isinstance(self._f, cs.Function):
-            raise ValueError("dynamics f is mandatory")
+        Ocp2Fatrop.check_type(["_L", "_E"], self, (cs.Function, cs.SX, cs.DM))
+        Ocp2Fatrop.check_type(["_e0", "_f"], self, (cs.Function))
+        Ocp2Fatrop.check_type(["_h", "_ef"], self, (cs.Function, cs.SX))
+        Ocp2Fatrop.check_type(
+            ["_e0_lb", "_e0_ub", "_ef_lb", "_ef_ub", "_h_lb", "_h_ub"], self, cs.DM
+        )
 
         W = self.nlp.variable(self.nx + self.nu, N)
         xnp1 = self.nlp.variable(self.nx, 1)
@@ -135,16 +200,10 @@ class Ocp2Fatrop:
         Xf = X[:, -1]
 
         # objective
-        if isinstance(self._L, cs.Function):
-            Ll = self._L.map(N, "serial")(tl, Xl, U).T
-            Lr = self._L.map(N, "serial")(tr, Xr, U).T
-            lagrange = 0.5 * (tr - tl) @ (Ll + Lr)
-        else:
-            lagrange = 0
-        if isinstance(self._E, cs.Function):
-            mayer = self._E(t0, tf, X0, Xf)
-        else:
-            mayer = 0
+        Ll = self._L.map(N, "serial")(tl, Xl, U).T
+        Lr = self._L.map(N, "serial")(tr, Xr, U).T
+        lagrange = 0.5 * (tr - tl) @ (Ll + Lr)
+        mayer = self._E(t0, tf, X0, Xf)
         obj = lagrange + mayer
 
         # e0
@@ -199,9 +258,9 @@ class Ocp2Fatrop:
 
         self.nlp.minimize(obj)
 
-        if False:
+        if True:
+            self.ineqeq=((lb - ub).full().flatten() == 0).tolist()
             self.nlp.subject_to(self.nlp.bounded(lb, constraint, ub))
-
         else:
             id_eq = cs.np.where((lb - ub).full() == 0)[0].tolist()
             for i in range(lb.numel()):
@@ -235,6 +294,17 @@ class Ocp2Fatrop:
             dis_ocp["h_ub"] = H_ub
 
         self._dis_ocp = dis_ocp
+
+    def set_solver(self,name='fatrop',options:dict|None=None):
+        if options is None:
+            options = {}
+            options["expand"] = True
+            options["fatrop"] = {"mu_init": 0.1}
+            options["structure_detection"] = "auto"
+            options["debug"] = False
+            options['equality']=self.ineqeq
+        self.nlp.solver(name, options)
+
 
     def solve(
         self,

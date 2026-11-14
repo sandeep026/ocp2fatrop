@@ -8,6 +8,7 @@ def cart():
     t, x, u = ocp.t, ocp.x, ocp.u
     exprs = {}
     exprs["L"] = u**2
+    exprs['E'] =cs.DM(0)
     exprs["f"] = cs.vertcat(x[1], -x[1] + u)
     exprs["e0"] = ocp.x0 - cs.DM([0, 0])
     exprs["e0_lb"] = [0, 0]
@@ -25,6 +26,7 @@ def cart():
     ocp.transcribe(N)
     Xg = cs.DM.ones(2, N + 1) * 1.0
     Ug = cs.DM.zeros(1, N)
+    ocp.set_solver()
     sol = ocp.solve(Xg, Ug)
     X = sol.value(ocp._dis_ocp["X"])
     t_grid = sol.value(ocp._dis_ocp["t"])

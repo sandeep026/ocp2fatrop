@@ -8,6 +8,7 @@ def robot():
     t, x, u = ocp.t, ocp.x, ocp.u
     exprs = {}
     exprs["L"] = cs.sum1(u)
+    exprs["E"] = 0
     alpha = 0.2
     beta = 0.2
     thrust = u[0] - u[1] + u[2] - u[3]
@@ -52,6 +53,7 @@ def robot():
         cs.DM.ones(1, N) * 0.9,
         cs.DM.ones(1, N) * 0.9
     )
+    ocp.set_solver()
     sol = ocp.solve(Xg, Ug)
     X = sol.value(ocp._dis_ocp['X'])
     t_grid = sol.value(ocp._dis_ocp['t'])
@@ -72,5 +74,7 @@ def robot():
 
     plt.tight_layout()
     plt.show()
+
+
 if __name__=='__main__':
     robot()
