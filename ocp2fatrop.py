@@ -5,6 +5,8 @@ from functools import wraps
 import casadi as cs
 
 TIMING_LOGS = []
+
+
 def timer(func):
     @wraps(func)
     def wrapper(*args, **kwargs):
@@ -54,7 +56,6 @@ def print_timings(clear=True):
 
     if clear:
         TIMING_LOGS.clear()
-
 
 
 @time_all_methods
@@ -172,14 +173,12 @@ class Ocp2Fatrop:
         return [self.t0, self.tf, self.x0, self.xf]
 
     def set_expressions(self, exps: dict):
-
+        self.check_objective(exps)
+        self.check_dynamics(exps)
+        self.check_bounds(exps)
         absent = []
         for name in ["L", "f", "h"]:
             if name in exps:
-                if not isinstance(exps[name], (int, float, cs.DM, cs.SX)):
-                    raise TypeError(
-                        f"{name} must be of type (int,float,cs.DM,cs.SX) but received {type(exps[name]).__name__}"
-                    )
                 setattr(
                     self,
                     f"_{name}",
@@ -191,30 +190,18 @@ class Ocp2Fatrop:
         for name in ["e0", "ef", "E"]:
             if name in exps:
                 if name == "e0":
-                    if not isinstance(exps[name], cs.SX):
-                        raise TypeError(
-                            f"{name} must be of type cs.SX but received {type(exps[name]).__name__}"
-                        )
                     setattr(
                         self,
                         f"_{name}",
                         cs.Function(name, self.get_e0_var(), [exps[name]]),
                     )
                 elif name == "ef":
-                    if not isinstance(exps[name], cs.SX):
-                        raise TypeError(
-                            f"{name} must be of type cs.SX but received {type(exps[name]).__name__}"
-                        )
                     setattr(
                         self,
                         f"_{name}",
                         cs.Function(name, self.get_ef_var(), [exps[name]]),
                     )
                 elif name == "E":
-                    if not isinstance(exps[name], (cs.SX, int, float, cs.DM)):
-                        raise TypeError(
-                            f"{name} must be of type cs.SX but received {type(exps[name]).__name__}"
-                        )
                     setattr(
                         self,
                         f"_{name}",
@@ -226,10 +213,6 @@ class Ocp2Fatrop:
         # stores constants (list)  as DM vectors
         for name in ["e0_lb", "ef_lb", "e0_ub", "ef_ub", "h_lb", "h_ub"]:
             if name in exps:
-                if not isinstance(exps[name], list):
-                    raise TypeError(
-                        f"{name} must be of type list[float|int] but received {type(exps[name]).__name__}"
-                    )
                 setattr(self, f"_{name}", cs.DM(exps[name]))
             else:
                 absent.append(name)
@@ -238,6 +221,88 @@ class Ocp2Fatrop:
         for name in absent:
             if name in ["L", "E", "f", "e0", "e0_lb", "e0_ub"]:
                 raise ValueError(f"{name} is mandatory and user has not set")
+
+    def check_objective(self, exps):
+        # checks shape of scalr objective
+        # check type as int float and SX DM
+        for name in ["L", "E"]:
+            if name in exps:
+                if isinstance(exps[name], (cs.SX, cs.DM)) and exps[name].shape != (
+                    1,
+                    1,
+                ):
+                    raise ValueError(
+                        f"{name} must be scalar but received expression of shape {exps[name].shape}"
+                    )
+                if not isinstance(exps[name], (int, float, cs.SX, cs.DM)):
+                    raise TypeError(
+                        f"{name} must be of type int,float or SX but recieved {type(exps[name]).__name__}"
+                    )
+
+    def check_dynamics(self, exps):
+        # state and dynamics vector dims must match
+        if not isinstance(exps["f"], cs.SX):
+            raise TypeError(
+                f"f must be of type SX but recieved {type(exps['f']).__name__}"
+            )
+        if exps["f"].shape != (self.nx, 1):
+            raise ValueError(
+                f"f must match the size of state vector but recieved nx:{self.nx}  and f of shape: {exps['f'].shape}"
+            )
+
+    def check_bounds(self, exps: dict):
+        # shape
+        # type type of elements of bounds
+        # element wise bound check
+        for name in ["e0", "ef", "h"]:
+            if name in exps:
+                if not (f"{name}_lb" in exps and f"{name}_ub"):
+                    raise ValueError(
+                        f"{name} must have a valid bounds {name}_lb and {name}_ub"
+                    )
+                else:
+                    if not isinstance(exps[name], cs.SX):
+                        raise TypeError(
+                            f"{name} must be SX but recieved {type(exps[name]).__name__}"
+                        )
+
+                    if not (
+                        isinstance(exps[f"{name}_lb"], list)
+                        and isinstance(exps[f"{name}_ub"], list)
+                    ):
+                        raise TypeError(
+                            f"{name}_lb/ub must be of type list[float|int] but received lb :"
+                            f"{type(exps[f'{name}_lb']).__name__} and ub :{type(exps[f'{name}_ub']).__name__}"
+                        )
+
+                    if not (
+                        (exps[f"{name}"]).numel()
+                        == len(exps[f"{name}_lb"])
+                        == len(exps[f"{name}_ub"])
+                    ):
+                        raise ValueError(
+                            f"Shapes of {name} and its bounds are not same. {name}:{exps[name].shape}, "
+                            f"{name}_lb:{(len(exps[f'{name}_lb']), 1)}, {name}_ub:{(len(exps[f'{name}_ub']), 1)}"
+                        )
+
+                    for i in range((exps[f"{name}"]).numel()):
+                        if not (
+                            isinstance(exps[f"{name}_lb"][i], (int, float))
+                            and isinstance(exps[f"{name}_ub"][i], (int, float))
+                        ):
+                            raise TypeError(
+                                f"All elements of {name}_lb or {name}_ub must be int/float but received for {name}_lb[{i}]:"
+                                f" {type(exps[f'{name}_lb'][i]).__name__}"
+                                f" and {name}_ub[{i}]: {type(exps[f'{name}_ub'][i]).__name__}"
+                            )
+
+                    if not all(
+                        exps[f"{name}_ub"][i] >= exps[f"{name}_lb"][i]
+                        for i in range(exps[name].numel())
+                    ):
+                        raise ValueError(
+                            f"The bounds must be ub>lb for {name} but recieved {name}_lb > {name}_ub"
+                        )
 
     def transcribe(self, N: int = 50, method: str = "trap"):
 
@@ -358,8 +423,9 @@ class Ocp2Fatrop:
             options["structure_detection"] = "auto"
             options["debug"] = False
             options["equality"] = self.ineqeq
-        else:
+        if options is None:
             options = {}
+
         self.nlp.solver(name, options)
 
     def solve(

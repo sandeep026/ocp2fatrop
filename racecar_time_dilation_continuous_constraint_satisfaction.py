@@ -27,7 +27,7 @@ def racecar():
         ct,
     )
     exprs["h"] = cs.vertcat(ocp.u, ocp.x[2])
-    inf = cs.DM.inf()
+    inf = float('inf')
     exprs["h_lb"] = [0, 1.8, 0]
     exprs["h_ub"] = [1, inf, inf]
     ocp.set_expressions(exprs)

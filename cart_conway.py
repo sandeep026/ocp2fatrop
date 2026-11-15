@@ -8,7 +8,7 @@ def cart():
     t, x, u = ocp.t, ocp.x, ocp.u
     exprs = {}
     exprs["L"] = u**2
-    exprs['E'] =cs.DM(0)
+    exprs['E'] =cs.DM([0])
     exprs["f"] = cs.vertcat(x[1], -x[1] + u)
     exprs["e0"] = ocp.x0 - cs.DM([0, 0])
     exprs["e0_lb"] = [0, 0]
