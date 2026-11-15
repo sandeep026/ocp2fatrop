@@ -1,8 +1,63 @@
+import time
 from dataclasses import dataclass, field
+from functools import wraps
 
 import casadi as cs
 
+TIMING_LOGS = []
+def timer(func):
+    @wraps(func)
+    def wrapper(*args, **kwargs):
+        start = time.perf_counter()
+        result = func(*args, **kwargs)
+        end = time.perf_counter()
+        TIMING_LOGS.append((func.__qualname__, end - start))
+        return result
 
+    return wrapper
+
+
+def time_all_methods(cls):
+    for attr_name, attr_value in cls.__dict__.items():
+        # Time regular functions, ignoring magic methods like __init__
+        if callable(attr_value) and not attr_name.startswith("__"):
+            setattr(cls, attr_name, timer(attr_value))
+    return cls
+
+
+from collections import defaultdict
+
+
+def print_timings(clear=True):
+    if not TIMING_LOGS:
+        return
+
+    stats = defaultdict(lambda: {"calls": 0, "time": 0.0})
+    for name, duration in TIMING_LOGS:
+        stats[name]["calls"] += 1
+        stats[name]["time"] += duration
+
+    total_calls = sum(item["calls"] for item in stats.values())
+    total_time = sum(item["time"] for item in stats.values())
+
+    print("\n" + "=" * 70)
+    print(f"{'Method':<30} | {'Calls':>5} | {'Time (s)':>10} | {'Avg / Call (s)':>14}")
+    print("-" * 70)
+    for name, data in stats.items():
+        calls = data["calls"]
+        duration = data["time"]
+        avg_str = f"{duration / calls:.4f}" if calls > 1 else "-"
+        print(f"{name:<30} | {calls:>5} | {duration:>10.4f} | {avg_str:>14}")
+    print("-" * 70)
+    print(f"{'Total':<30} | {total_calls:>5} | {total_time:>10.4f} | {'-':>14}")
+    print("=" * 70)
+
+    if clear:
+        TIMING_LOGS.clear()
+
+
+
+@time_all_methods
 @dataclass
 class Ocp2Fatrop:
     nx: int
@@ -39,7 +94,7 @@ class Ocp2Fatrop:
 
     _dis_ocp: dict = field(default_factory=dict)
 
-    ineqeq:list=field(default_factory=list)
+    ineqeq: list = field(default_factory=list)
 
     @classmethod
     def check_type(cls, names: list["str"], obj, req_type):
@@ -118,11 +173,13 @@ class Ocp2Fatrop:
 
     def set_expressions(self, exps: dict):
 
-        absent=[]
+        absent = []
         for name in ["L", "f", "h"]:
             if name in exps:
-                if not isinstance(exps[name],(int,float,cs.DM,cs.SX)):
-                    raise TypeError(f'{name} must be of type (int,float,cs.DM,cs.SX) but received {type(exps[name]).__name__}')
+                if not isinstance(exps[name], (int, float, cs.DM, cs.SX)):
+                    raise TypeError(
+                        f"{name} must be of type (int,float,cs.DM,cs.SX) but received {type(exps[name]).__name__}"
+                    )
                 setattr(
                     self,
                     f"_{name}",
@@ -134,24 +191,30 @@ class Ocp2Fatrop:
         for name in ["e0", "ef", "E"]:
             if name in exps:
                 if name == "e0":
-                    if not isinstance(exps[name],cs.SX):
-                        raise TypeError(f'{name} must be of type cs.SX but received {type(exps[name]).__name__}')
+                    if not isinstance(exps[name], cs.SX):
+                        raise TypeError(
+                            f"{name} must be of type cs.SX but received {type(exps[name]).__name__}"
+                        )
                     setattr(
                         self,
                         f"_{name}",
                         cs.Function(name, self.get_e0_var(), [exps[name]]),
                     )
                 elif name == "ef":
-                    if not isinstance(exps[name],cs.SX):
-                        raise TypeError(f'{name} must be of type cs.SX but received {type(exps[name]).__name__}')
+                    if not isinstance(exps[name], cs.SX):
+                        raise TypeError(
+                            f"{name} must be of type cs.SX but received {type(exps[name]).__name__}"
+                        )
                     setattr(
                         self,
                         f"_{name}",
                         cs.Function(name, self.get_ef_var(), [exps[name]]),
                     )
-                elif name=='E':
-                    if not isinstance(exps[name],(cs.SX,int,float,cs.DM)):
-                        raise TypeError(f'{name} must be of type cs.SX but received {type(exps[name]).__name__}')
+                elif name == "E":
+                    if not isinstance(exps[name], (cs.SX, int, float, cs.DM)):
+                        raise TypeError(
+                            f"{name} must be of type cs.SX but received {type(exps[name]).__name__}"
+                        )
                     setattr(
                         self,
                         f"_{name}",
@@ -160,20 +223,21 @@ class Ocp2Fatrop:
             else:
                 absent.append(name)
 
-        #stores constants (list)  as DM vectors
+        # stores constants (list)  as DM vectors
         for name in ["e0_lb", "ef_lb", "e0_ub", "ef_ub", "h_lb", "h_ub"]:
             if name in exps:
-                if not isinstance(exps[name],list):
-                    raise TypeError(f'{name} must be of type list[float|int] but received {type(exps[name]).__name__}')
+                if not isinstance(exps[name], list):
+                    raise TypeError(
+                        f"{name} must be of type list[float|int] but received {type(exps[name]).__name__}"
+                    )
                 setattr(self, f"_{name}", cs.DM(exps[name]))
             else:
                 absent.append(name)
 
-        #catches if madatory expression not set by user
+        # catches if madatory expression not set by user
         for name in absent:
-            if name in ['L','E','f','e0','e0_lb','e0_ub']:
-                raise ValueError(f'{name} is mandatory and user has not set')
-
+            if name in ["L", "E", "f", "e0", "e0_lb", "e0_ub"]:
+                raise ValueError(f"{name} is mandatory and user has not set")
 
     def transcribe(self, N: int = 50, method: str = "trap"):
 
@@ -257,17 +321,8 @@ class Ocp2Fatrop:
         )
 
         self.nlp.minimize(obj)
-
-        if True:
-            self.ineqeq=((lb - ub).full().flatten() == 0).tolist()
-            self.nlp.subject_to(self.nlp.bounded(lb, constraint, ub))
-        else:
-            id_eq = cs.np.where((lb - ub).full() == 0)[0].tolist()
-            for i in range(lb.numel()):
-                if i in id_eq:
-                    self.nlp.subject_to(constraint[i] == 0)
-                else:
-                    self.nlp.subject_to(self.nlp.bounded(lb[i], constraint[i], ub[i]))
+        self.ineqeq = ((lb - ub).full().flatten() == 0).tolist()
+        self.nlp.subject_to(self.nlp.bounded(lb, constraint, ub))
 
         dis_ocp = {
             "X": X,
@@ -295,16 +350,17 @@ class Ocp2Fatrop:
 
         self._dis_ocp = dis_ocp
 
-    def set_solver(self,name='fatrop',options:dict|None=None):
-        if options is None:
+    def set_solver(self, name="fatrop", options: dict | None = None):
+        if name == "fatrop" and options is None:
             options = {}
             options["expand"] = True
             options["fatrop"] = {"mu_init": 0.1}
             options["structure_detection"] = "auto"
             options["debug"] = False
-            options['equality']=self.ineqeq
+            options["equality"] = self.ineqeq
+        else:
+            options = {}
         self.nlp.solver(name, options)
-
 
     def solve(
         self,
