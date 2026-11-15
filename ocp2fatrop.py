@@ -256,6 +256,7 @@ class Ocp2Fatrop:
         # element wise bound check
         for name in ["e0", "ef", "h"]:
             if name in exps:
+                
                 if not (f"{name}_lb" in exps and f"{name}_ub"):
                     raise ValueError(
                         f"{name} must have a valid bounds {name}_lb and {name}_ub"

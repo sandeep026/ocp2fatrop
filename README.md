@@ -1,8 +1,10 @@
-## ocp2fatrop
+## Ocp2Fatrop
 
-Fatrop is a structure exploiting discrete OCP solver for fast numerical optimal control. Inspired by IPOPT, it implements an primal dual IP algorithm and uses Ricatti recursion to solve the linear system at each Newton
-iteration efficiently. If the KKT solve time is currently a bottleneck in your setup, switching to FATROP can speed up things significantly. However, this solver requires a special ordering of variables and constraints
-to work. It also requires the transcription to be multiple shooting.
+[Fatrop](https://github.com/meco-group/fatrop) is a structure-exploiting discrete optimal control problem (OCP) solver designed for fast numerical optimal control. Inspired by IPOPT, it implements a primal-dual interior-point algorithm and uses generalized Riccati recursion to solve the KKT linear system efficiently at each Newton iteration. If KKT solve time is a bottleneck in your current workflow, switching to Fatrop can deliver significant speedups. However, Fatrop requires multiple-shooting transcription along with a strict ordering of variables and constraints. Setting this up manually in loops is both tedious and error-prone.
+
+**ocp2fatrop** removes this boilerplate by providing a high-level modeling layer for OCPs:
+* **Batching & Graph Compression:** Uses CasADi's `map` construct instead of manual Python loops to keep symbolic graphs compact and fast to evaluate.
+* **Automated Transcription:** Handles variable ordering, constraint structuring, and transcription into the discrete OCP/NLP behind the scenes, allowing you to focus on problem formulation rather than solver plumbing.
 
 ## Requirements
 
@@ -11,9 +13,6 @@ to work. It also requires the transcription to be multiple shooting.
 * casadi 3.8.2
 * numpy
 
-## Dev notes
-
-This is a first working prototype and it will improve further with time.
 
 ## Problem
 
@@ -53,7 +52,7 @@ The code maps these mathematical elements into CasADi symbolic variables and Pyt
 
 * **`nx`**: Dimension of the state vector $x(t)$.
 * **`nu`**: Dimension of the control input vector $u(t)$.
-* **`T0`**, **`Tf`**: Nominal initial and final time bounds of the horizon.
+* **`T0`**, **`Tf`**: Nominal initial and final time.
 
 #### Symbolic Variables
 
@@ -62,6 +61,8 @@ The code maps these mathematical elements into CasADi symbolic variables and Pyt
 * **`u`**: Control vector symbol of size `nu` (`cs.SX`).
 * **`t0`**, **`tf`**: Initial and final time symbols.
 * **`x0`**, **`xf`**: Initial and final state vector symbols.
+
+These are used to construct various elements of the OCP.
 
 #### Objective & Dynamics Expressions (`set_expressions`)
 
@@ -72,8 +73,8 @@ The code maps these mathematical elements into CasADi symbolic variables and Pyt
 #### Constraints & Bounds (`set_expressions`)
 
 * **`_h`**, **`_h_lb`**, **`_h_ub`**: Path constraint function $h$ along with its lower ($h_{\text{lb}}$) and upper ($h_{\text{ub}}$) numerical bounds.
-* **`_e0`**, **`_e0_lb`**, **`_e0_ub`**: Initial event/boundary condition function $e_0$ with its bounds.
-* **`_ef`**, **`_ef_lb`,** `_ef_ub`**: Final event/boundary condition function $e_f$ with its bounds.
+* **`_e0`**, **`_e0_lb`**, **`_e0_ub`**: Initial event condition function $e_0$ with its bounds.
+* **`_ef`**, **`_ef_lb`,** `_ef_ub`**: Final event condition function $e_f$ with its bounds.
 
 ## Multiple shooting
 
