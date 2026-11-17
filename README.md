@@ -7,6 +7,10 @@
 - **Batching & Graph Compression:** Uses CasADi's `map` construct instead of manual Python loops to keep symbolic graphs compact and fast to evaluate.
 - **Automated Transcription:** Handles variable ordering, constraint structuring, and transcription into the discrete OCP/NLP behind the scenes, allowing you to focus on problem formulation rather than solver plumbing.
 
+<p align="center">
+  <img src="./demo.gif" alt="Demo GIF" width="600" />
+</p>
+
 ## Requirements
 
 - python
