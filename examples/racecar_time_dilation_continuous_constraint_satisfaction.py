@@ -1,5 +1,6 @@
 import casadi as cs
 import matplotlib.pyplot as plt
+
 from ocp2fatrop import Ocp2Fatrop
 
 
@@ -16,10 +17,7 @@ def racecar():
     exprs["ef"] = cs.vertcat(ocp.xf[0] - cs.DM([1]), ocp.xf[-1] - 0)
     exprs["ef_lb"] = [0, 0]
     exprs["ef_ub"] = [0, 1e-5]
-    ct = (
-        ocp.u[1]
-        * cs.fmax(0, ocp.x[1] - (1 - 0.5 * cs.sin(2 * cs.pi * ocp.x[0]))) ** 2
-    )
+    ct = ocp.u[1] * cs.fmax(0, ocp.x[1] - (1 - 0.5 * cs.sin(2 * cs.pi * ocp.x[0]))) ** 2
     exprs["f"] = cs.vertcat(
         ocp.x[1] * ocp.u[1],
         (ocp.u[0] - ocp.x[1]) * ocp.u[1],
@@ -27,12 +25,12 @@ def racecar():
         ct,
     )
     exprs["h"] = cs.vertcat(ocp.u, ocp.x[2])
-    inf = float('inf')
+    inf = float("inf")
     exprs["h_lb"] = [0, 1.8, 0]
     exprs["h_ub"] = [1, inf, inf]
     ocp.set_expressions(exprs)
     N = 500
-    dis_ocp = ocp.transcribe(N)
+    ocp.transcribe(N)
     Xg = cs.vertcat(
         cs.linspace(0, 1, N + 1).T,
         cs.DM.zeros(1, N + 1),
@@ -53,5 +51,6 @@ def racecar():
     plt.spy(cs.jacobian(ocp.nlp.g, ocp.nlp.x).sparsity())
     plt.show()
 
-if __name__=='__main__':
+
+if __name__ == "__main__":
     racecar()

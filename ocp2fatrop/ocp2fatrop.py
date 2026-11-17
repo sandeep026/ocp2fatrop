@@ -98,7 +98,7 @@ class Ocp2Fatrop:
     ineqeq: list = field(default_factory=list)
 
     @classmethod
-    def check_type(cls, names: list["str"], obj, req_type):
+    def check_type(cls, names: list[str], obj, req_type):
         for name in names:
             var = getattr(obj, name)
             if not isinstance(var, req_type):
@@ -107,21 +107,21 @@ class Ocp2Fatrop:
                 )
 
     @classmethod
-    def ge(cls, names: list["str"], obj, rhs):
+    def ge(cls, names: list[str], obj, rhs):
         for name in names:
             var = getattr(obj, name)
             if var < rhs:
                 raise ValueError(f"{name} must be > {rhs} but received {var}<{rhs}")
 
     @classmethod
-    def le(cls, names: list["str"], obj, rhs):
+    def le(cls, names: list[str], obj, rhs):
         for name in names:
             var = getattr(obj, name)
             if var > rhs:
                 raise ValueError(f"{name} must be < {rhs} but received {var}>{rhs}")
 
     @classmethod
-    def shape(cls, names: list["str"], obj, req_shapes: list[tuple]):
+    def shape(cls, names: list[str], obj, req_shapes: list[tuple]):
         for name, shape in zip(names, req_shapes):
             var = getattr(obj, name)
             if var.shape != shape:
@@ -256,7 +256,6 @@ class Ocp2Fatrop:
         # element wise bound check
         for name in ["e0", "ef", "h"]:
             if name in exps:
-                
                 if not (f"{name}_lb" in exps and f"{name}_ub"):
                     raise ValueError(
                         f"{name} must have a valid bounds {name}_lb and {name}_ub"
@@ -484,4 +483,15 @@ class Ocp2Fatrop:
         k3 = self._f(tl + dt / 2, xl + dt / 2 * k2, u)
         k4 = self._f(tr, xl + dt * k3, u)
         defect = xr - xl - dt / 6 * (k1 + 2 * k2 + 2 * k3 + k4)
+        return cs.Function("defect", [tl, tr, xl, xr, u], [defect])
+
+    def fw_euler(self):
+        xl = cs.SX.sym("xl", self.nx, 1)
+        xr = cs.SX.sym("xr", self.nx, 1)
+        u = cs.SX.sym("u", self.nu, 1)
+        tl = cs.SX.sym("tl", 1, 1)
+        tr = cs.SX.sym("tr", 1, 1)
+        dt = tr - tl
+        k1 = self._f(tl, xl, u)
+        defect = xr - xl - dt * (k1)
         return cs.Function("defect", [tl, tr, xl, xr, u], [defect])

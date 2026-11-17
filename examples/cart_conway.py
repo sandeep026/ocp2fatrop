@@ -1,14 +1,16 @@
 import casadi as cs
 import matplotlib.pyplot as plt
+import numpy as np
+
 from ocp2fatrop import Ocp2Fatrop
 
 
 def cart():
     ocp = Ocp2Fatrop(nx=2, nu=1, T0=0, Tf=2)
-    t, x, u = ocp.t, ocp.x, ocp.u
+    _t, x, u = ocp.t, ocp.x, ocp.u
     exprs = {}
     exprs["L"] = u**2
-    exprs['E'] =cs.DM([0])
+    exprs["E"] = cs.DM([0])
     exprs["f"] = cs.vertcat(x[1], -x[1] + u)
     exprs["e0"] = ocp.x0 - cs.DM([0, 0])
     exprs["e0_lb"] = [0, 0]
@@ -28,8 +30,8 @@ def cart():
     Ug = cs.DM.zeros(1, N)
     ocp.set_solver()
     sol = ocp.solve(Xg, Ug)
-    X = sol.value(ocp._dis_ocp["X"])
-    t_grid = sol.value(ocp._dis_ocp["t"])
+    X: np.ndarray = sol.value(ocp._dis_ocp["X"])
+    t_grid: np.ndarray = sol.value(ocp._dis_ocp["t"])
     U = sol.value(ocp._dis_ocp["U"])
     plt.figure(figsize=(10, 4))
     plt.subplot(1, 2, 1)

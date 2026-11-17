@@ -30,12 +30,12 @@ def robot():
     exprs["ef_lb"] = [0] * 6
     exprs["ef_ub"] = [0] * 6
     exprs["h"] = cs.vertcat(u, u[0] + u[1], u[2] + u[3])
-    inf = float('inf')
+    inf = float("inf")
     exprs["h_lb"] = [0, 0, 0, 0, -inf, -inf]
     exprs["h_ub"] = [1, 1, 1, 1, 1, 1]
     ocp.set_expressions(exprs)
     N = 1000
-    ocp.transcribe(N,method='rk')
+    ocp.transcribe(N, method="rk")
     Xg = cs.vertcat(
         cs.linspace(-10, 0, N + 1).T,  # y1 (px)
         cs.linspace(-10, 0, N + 1).T,  # y2 (py)
@@ -50,9 +50,10 @@ def robot():
         cs.DM.ones(1, N) * 0.9,
         cs.DM.ones(1, N) * 0.9,
     )
-#    ocp.set_solver("fatrop")
-#    ocp.set_solver("uno",{'uno.preset':'ipopt','expand':True})
-    ocp.set_solver("ipopt",{'expand':True,'equality':ocp.ineqeq})
+    ocp.set_solver("fatrop")
+    #    ocp.set_solver("uno",{'uno.preset':'ipopt','expand':True})
+    #    ocp.set_solver("ipopt",{'expand':True,'equality':ocp.ineqeq})
+
     sol = ocp.solve(Xg, Ug)
 
     print_timings()
