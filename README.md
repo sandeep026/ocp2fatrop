@@ -7,6 +7,12 @@
 - **Batching & Graph Compression:** Uses CasADi's `map` construct instead of manual Python loops to keep symbolic graphs compact and fast to evaluate.
 - **Automated Transcription:** Handles variable ordering, constraint structuring, and transcription into the discrete OCP/NLP behind the scenes, allowing you to focus on problem formulation rather than solver plumbing.
 
+The following video is a Fatrop generate optimal trajectory for obstacle avoidance. A point mass model of the car is used but for representation
+a car shape is taken. The same example is sovled in Fatrop's examples folder and the difference lies in verbosity.
+
+1. [ocp2fatrop](https://github.com/sandeep026/ocp2fatrop/blob/main/examples/car_obstacle_avoidance.py)
+2. [fatrop](https://github.com/meco-group/fatrop/blob/main/examples/ocp/car_reference_tracking_example.py)
+
 <p align="center">
   <img src="./demo.gif" alt="Demo GIF" width="600" />
 </p>
